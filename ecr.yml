@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  CloudFormation template for creating AWS CodeCommit repository and ECR repository to store cicd java eks code
+
+Parameters:
+
+    ECRRepositoryName:
+      Default: ecr-docker-repo-name
+      Type: String
+      Description: Name of ECR repo to be created
+
+Resources:
+
+  DockerRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy: 
+       LifecyclePolicyText: |
+         {
+            "rules": [
+                {
+                   "rulePriority": 2,
+                   "description": "Expire images older than 14 days",
+                   "selection": {
+                       "tagStatus": "any",
+                       "countType": "sinceImagePushed",
+                       "countUnit": "days",
+                       "countNumber": 14
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                },
+                {
+                   "rulePriority": 1,
+                   "description": "Keep only one untagged image, expire all others",
+                   "selection": {
+                       "tagStatus": "untagged",
+                       "countType": "imageCountMoreThan",
+                       "countNumber": 1
+                   },
+                   "action": {
+                       "type": "expire"
+                   }
+                }
+           ]
+         }
+      
+      RepositoryName: !Ref ECRRepositoryName
+
+Outputs:
+  ECRUrl:
+    Value: !Sub https://console.aws.amazon.com/ecr/repositories/private/${AWS::AccountId}/${DockerRepo}?region=${AWS::Region}
